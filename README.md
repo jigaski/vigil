@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # iot-scanner
 
 An Electron application with React
