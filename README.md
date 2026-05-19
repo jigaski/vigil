@@ -1,38 +1,3 @@
-# iot-scanner
-
-An Electron application with React
-
-## Recommended IDE Setup
-
-- [VSCode](https://code.visualstudio.com/) + [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint) + [Prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode)
-
-## Project Setup
-
-### Install
-
-```bash
-$ npm install
-```
-
-### Development
-
-```bash
-$ npm run dev
-```
-
-### Build
-
-```bash
-# For windows
-$ npm run build:win
-
-# For macOS
-$ npm run build:mac
-
-# For Linux
-$ npm run build:linux
-```
-=======
 # Vigil
 
 A privacy-focused desktop application that scans your home network for IoT devices, open ports, and potential security vulnerabilities. All local network scanning happens entirely on your machine — nothing leaves without your explicit consent.
@@ -100,4 +65,3 @@ Vigil is intended for use on networks you own or have explicit authorization to 
 ## License
 
 MIT
->>>>>>> e44b0899fc1b81970604d93265fa8d7ff6949dad
