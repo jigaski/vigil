@@ -1,64 +1,46 @@
 # Vigil
 
-A privacy-focused desktop application that scans your home network for IoT devices, open ports, and potential security vulnerabilities. All local network scanning happens entirely on your machine — nothing leaves without your explicit consent.
+Vigil scans your home network and shows you every device connected to it — your smart TV, security cameras, thermostats, game consoles, and more — along with any security risks they might have.
 
-Built with Electron, React, and Nmap.
-
----
-
-## Features
-
-- **Network discovery** — automatically detects your local subnet and scans for all active devices
-- **Device identification** — resolves hostnames, MAC addresses, and hardware vendors via OUI lookup
-- **Port scanning** — checks the top 100 most common ports on each device for open services
-- **Shodan integration** *(optional)* — cross-references discovered devices against Shodan's internet-wide database to identify externally exposed services
-- **Local-first** — your network topology, device list, and scan data never leave your machine
+Everything runs on your computer. Your network data never leaves your machine.
 
 ---
 
-## Requirements
+## What it does
 
-- [Node.js](https://nodejs.org/)
-- [Nmap](https://nmap.org/download.html) installed and available in your system PATH
-- Shodan API key *(optional, free tier available at shodan.io)*
-
----
-
-## Installation
-
-```bash
-git clone https://github.com/jigaski/vigil
-cd vigil
-npm install
-npm run dev
-```
+- Finds every device on your home network automatically
+- Identifies what each device is and who made it
+- Checks each device for open ports that could be exploited
+- Optionally checks if any of your devices are visible from the public internet
 
 ---
 
-## Usage
+## Download
 
-1. Launch the app — your local subnet is detected automatically
-2. Click **Scan** to discover devices on your network
-3. Click any device to scan its open ports
-4. *(Optional)* Add your Shodan API key in settings to check for external exposure
+Download the latest version for your platform from the [Releases](https://github.com/jigaski/vigil/releases) page.
+
+> Vigil requires [Nmap](https://nmap.org/download.html) to be installed on your computer to run scans.
 
 ---
 
-## Architecture
+## How to use it
 
-Vigil uses Electron's main/renderer process separation to keep all system-level operations secure:
+1. Open Vigil
+2. Click **Scan** — your network is detected automatically
+3. Click any device in the list to see its open ports
+4. Optionally add a free [Shodan](https://shodan.io) API key in settings to check if your devices are exposed to the internet
 
-- **Main process** — executes Nmap via Node.js `child_process`, handles IPC, queries external APIs
-- **Renderer process** — React UI, communicates with main process exclusively via IPC
-- **Preload script** — exposes a minimal, explicit API surface to the renderer via `contextBridge`
+---
 
-All scanning is performed locally. Shodan queries send only a single IP address to Shodan's public API — no internal network data is transmitted.
+## Privacy
+
+Vigil runs entirely on your machine. Your device list, network layout, and scan results are never uploaded or shared. The only optional external call is to Shodan's public API, which receives a single IP address — nothing else.
 
 ---
 
 ## Disclaimer
 
-Vigil is intended for use on networks you own or have explicit authorization to scan. Unauthorized network scanning may be illegal in your jurisdiction. Use responsibly.
+Only scan networks you own or have permission to scan. Unauthorized network scanning may be illegal in your jurisdiction.
 
 ---
 
