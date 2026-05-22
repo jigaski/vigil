@@ -4,10 +4,20 @@ import { execFile } from 'child_process'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { networkInterfaces } from 'os'
+import { createSocket } from 'dgram'
+
+function isPrivateIP(cidr) {
+  const ip = cidr.split('/')[0]
+  const parts = ip.split('.').map(Number)
+  if (parts[0] === 10) return true
+  if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return true
+  if (parts[0] === 192 && parts[1] === 168) return true
+  return false
+}
 
 function parseNmapOutput(raw) {
   const devices = []
-  const blocks = raw.split('Nmap scan report for ').slice(1)
+  const blocks = raw.replace(/\r/g, '').split('Nmap scan report for ').slice(1)
   for (const block of blocks) {
     const lines = block.trim().split('\n')
     const firstLine = lines[0].trim()
@@ -41,8 +51,10 @@ function parseNmapOutput(raw) {
 
 function parsePortOutput(raw) {
   const ports = []
-  const lines = raw.split('\n')
+  const lines = raw.replace(/\r/g, '').split('\n')
   for (const line of lines) {
+    console.log('testing line:', JSON.stringify(line))
+
     const match = line.match(/^(\d+)\/(tcp|udp)\s+open\s+(\S+)\s*(.*)$/)
     if (match) {
       ports.push({
@@ -90,6 +102,9 @@ app.whenReady().then(() => {
   ipcMain.on('ping', () => console.log('pong'))
 
   ipcMain.handle('run-scan', async (event, target) => {
+    if (!isPrivateIP(target)) {
+      return { error: 'Vigil only scans private networks. Please scan your local network.' }
+    }
     return new Promise((resolve, reject) => {
       execFile('nmap', ['-sn', target], (error, stdout, stderr) => {
         if (error) reject(stderr)
@@ -100,12 +115,62 @@ app.whenReady().then(() => {
 
   ipcMain.handle('scan-ports', async (event, ip) => {
     return new Promise((resolve, reject) => {
-      execFile('nmap', ['--open', '-T4', '--top-ports', '100', ip], (error, stdout, stderr) => {
+      execFile('nmap', ['--open', '-T3', '-Pn', '--top-ports', '1000', ip], (error, stdout, stderr) => {
         if (error) reject(stderr)
         else resolve(parsePortOutput(stdout))
       })
     })
   })
+ipcMain.handle('probe-upnp', async (event, ip) => {
+  const ports = [1078, 3000, 1900, 49152, 49153, 49154, 8080, 8200]
+  const paths = ['/description.xml', '/upnp/IGD.xml', '/rootDesc.xml', '/DeviceDescription.xml']
+
+  const fetchWithTimeout = (url, ms) => {
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('timeout')), ms)
+      fetch(url)
+        .then(res => { clearTimeout(timer); resolve(res) })
+        .catch(err => { clearTimeout(timer); reject(err) })
+    })
+  }
+
+  const attempts = ports.flatMap(port =>
+    paths.map(path => ({ port, path, url: `http://${ip}:${port}${path}` }))
+  )
+
+  const results = await Promise.allSettled(
+    attempts.map(async ({ port, path, url }) => {
+      const res = await fetchWithTimeout(url, 1500)
+      if (!res.ok) throw new Error('not ok')
+      const text = await res.text()
+      if (!text.includes('friendlyName') && !text.includes('deviceType')) throw new Error('not upnp')
+      return { port, path, text }
+    })
+  )
+
+  const hit = results.find(r => r.status === 'fulfilled')
+  if (!hit) return { responded: false }
+
+  const { text } = hit.value
+  return {
+    responded: true,
+    friendlyName: text.match(/<friendlyName>([^<]+)<\/friendlyName>/)?.[1] || null,
+    manufacturer: text.match(/<manufacturer>([^<]+)<\/manufacturer>/)?.[1] || null,
+    modelName: text.match(/<modelName>([^<]+)<\/modelName>/)?.[1] || null,
+    modelNumber: text.match(/<modelNumber>([^<]+)<\/modelNumber>/)?.[1] || null,
+  }
+})
+ipcMain.handle('deep-scan', async (event, ip, openPorts) => {
+  return new Promise((resolve, reject) => {
+    const portList = openPorts.map(p => p.port).join(',')
+    execFile('nmap', ['--open', '-T3', '-sV', '-Pn', '-p', portList, ip], (error, stdout, stderr) => {
+      console.log('deep scan stdout:', stdout)
+      const parsed = parsePortOutput(stdout)
+      if (error) reject(stderr)
+      else resolve(parsed)
+    })
+  })
+})
 
   ipcMain.handle('get-local-subnet', () => {
     const nets = networkInterfaces()
